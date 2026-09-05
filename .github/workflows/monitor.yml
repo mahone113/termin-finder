@@ -1,0 +1,47 @@
+name: Termin Monitor
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # alle 10 Minuten (GitHub kann etwas verzögern)
+  workflow_dispatch:          # manueller Start zum Testen
+
+permissions:
+  contents: read
+  actions: write   # für Cache
+
+concurrency:
+  group: termin-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: .last_state
+          key: termin-state-${{ github.run_id }}
+          restore-keys: termin-state-
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Check appointments
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python check_termin.py
+
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .last_state
+          key: termin-state-${{ github.run_id }}

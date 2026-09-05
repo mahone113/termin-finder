@@ -28,7 +28,7 @@
 Мюнхен час від часу змінює бекенд бронювання. Тоді:
 1. Відкрий [сторінку запису](https://stadt.muenchen.de/buergerservice/terminvereinbarung.html#/services/1071896/locations/10308174)
    у Chrome → DevTools (F12) → вкладка **Network**.
-2. Знайди запит типу `available-days` і скопіюй його URL.
+2. Знайди запит типу `available-calendar` і скопіюй його URL.
 3. Онови константу `BASE_URL` у `check_termin.py`.
 
 ## Нотатки

@@ -28,8 +28,8 @@ OFFICE_ID = "10308174"
 
 # Falls sich der Endpoint ändert: in der Buchungsseite
 # https://stadt.muenchen.de/buergerservice/terminvereinbarung.html#/services/1071896/locations/10308174
-# DevTools -> Network öffnen und den "available-days"-Request kopieren.
-BASE_URL = "https://www48.muenchen.de/buergeransicht/api/backend/available-days"
+# DevTools -> Network öffnen und den "available-calendar"-Request kopieren.
+BASE_URL = "https://www48.muenchen.de/buergeransicht/api/citizen/available-calendar/"
 
 BOOKING_URL = (
     "https://stadt.muenchen.de/buergerservice/terminvereinbarung.html"
@@ -47,9 +47,9 @@ def fetch_available_days() -> list[str]:
     params = {
         "startDate": start.isoformat(),
         "endDate": end.isoformat(),
-        "officeId": OFFICE_ID,
-        "serviceId": SERVICE_ID,
-        "serviceCount": "1",
+        "officeIds": OFFICE_ID,
+        "serviceIds": SERVICE_ID,
+        "serviceCounts": "1",
     }
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) TerminMonitor/1.0",
@@ -59,15 +59,15 @@ def fetch_available_days() -> list[str]:
     resp.raise_for_status()
     data = resp.json()
 
-    # Die API liefert entweder eine Liste von Datumsstrings
-    # oder ein Objekt mit einem Fehler wie {"errorCode": "noAppointmentForThisScope", ...}
+    # Die API liefert {"availableDays": [...]} oder {"errors": [{"errorCode": ...}]}
     if isinstance(data, list):
         return [str(d) for d in data]
     if isinstance(data, dict):
         if "availableDays" in data and isinstance(data["availableDays"], list):
             return [str(d) for d in data["availableDays"]]
-        if data.get("errorCode"):
-            print(f"API: {data.get('errorCode')} - keine Termine.")
+        if data.get("errors"):
+            codes = ", ".join(str(e.get("errorCode")) for e in data["errors"])
+            print(f"API: {codes} - keine Termine.")
             return []
     print(f"Unerwartete Antwort: {json.dumps(data)[:500]}")
     return []

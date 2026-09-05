@@ -1,0 +1,18 @@
+name: Telegram Test
+
+on:
+  workflow_dispatch:   # nur manuell: prüft, ob Bot-Token und Chat-ID funktionieren
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send test message
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -sS --fail-with-body "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=✅ Termin Monitor: Telegram funktioniert." \
+            | sed -E 's/"(id|first_name|last_name|username)":"?[^,}]*"?/"\1":"…"/g'

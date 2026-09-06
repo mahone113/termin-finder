@@ -2,13 +2,14 @@ name: Termin Monitor
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # alle 10 Minuten (GitHub kann etwas verzögern)
-  workflow_dispatch:          # manueller Start zum Testen
+    - cron: "17 */6 * * *"  # nur Fallback: startet die Kette neu, falls sie abreißt
+  workflow_dispatch:         # manueller Start und Selbst-Neustart am Ende jedes Laufs
 
 permissions:
   contents: read
-  actions: write   # für Cache
+  actions: write   # für Cache und workflow_dispatch (Selbst-Neustart)
 
+# Nur ein Lauf gleichzeitig; ein weiterer wartet, bis der aktuelle fertig ist.
 concurrency:
   group: termin-monitor
   cancel-in-progress: false
@@ -16,6 +17,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 355   # GitHub-Limit ist 360
     steps:
       - uses: actions/checkout@v4
 
@@ -33,11 +35,20 @@ jobs:
       - name: Install deps
         run: pip install requests
 
-      - name: Check appointments
+      # Ein einzelner Job pollt ~5h45m lang alle 10 Minuten. GitHub-Cron ist
+      # unzuverlässig (Verzögerungen von Stunden), deshalb nicht pro Check ein Lauf.
+      - name: Check appointments (loop)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python check_termin.py
+          PYTHONUNBUFFERED: "1"
+        run: |
+          end=$((SECONDS + 5*3600 + 45*60))
+          while [ "$SECONDS" -lt "$end" ]; do
+            echo "--- $(date -u '+%Y-%m-%d %H:%M:%S') UTC"
+            python check_termin.py
+            sleep 600
+          done
 
       - name: Save state
         if: always()
@@ -45,3 +56,9 @@ jobs:
         with:
           path: .last_state
           key: termin-state-${{ github.run_id }}
+
+      - name: Restart chain
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run monitor.yml --ref "${{ github.ref_name }}"

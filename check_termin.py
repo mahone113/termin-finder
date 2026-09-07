@@ -15,8 +15,9 @@ import hashlib
 import json
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -36,6 +37,7 @@ BOOKING_URL = (
     "#/services/1071896/locations/10308174"
 )
 
+TZ = ZoneInfo("Europe/Berlin")
 STATE_FILE = Path(".last_state")  # verhindert doppelte Benachrichtigungen
 LOOKAHEAD_DAYS = 180
 # -----------------------------------------------------------------------------
@@ -64,14 +66,22 @@ def fetch_available_days() -> list[str]:
         return [str(d) for d in data]
     if isinstance(data, dict):
         if "availableDays" in data and isinstance(data["availableDays"], list):
-            # Einträge sind Objekte wie {"date": "2026-09-08", "offices": [...]}
-            return [d["date"] if isinstance(d, dict) else str(d) for d in data["availableDays"]]
+            return [format_day(d) for d in data["availableDays"]]
         if data.get("errors"):
             codes = ", ".join(str(e.get("errorCode")) for e in data["errors"])
             print(f"API: {codes} - keine Termine.")
             return []
     print(f"Unerwartete Antwort: {json.dumps(data)[:500]}")
     return []
+
+
+def format_day(d) -> str:
+    """{"date": "2026-09-08", "offices": [{"appointments": [unix, ...]}]} -> "2026-09-08 10:00, 10:30" """
+    if not isinstance(d, dict):
+        return str(d)
+    stamps = sorted(t for o in d.get("offices", []) for t in o.get("appointments", []))
+    times = ", ".join(datetime.fromtimestamp(t, TZ).strftime("%H:%M") for t in stamps)
+    return f"{d['date']} {times}" if times else d["date"]
 
 
 def send_telegram(text: str) -> None:
@@ -96,10 +106,10 @@ def main() -> int:
     last_state = STATE_FILE.read_text().strip() if STATE_FILE.exists() else ""
 
     if days and state != last_state:
-        preview = ", ".join(days[:10]) + (" ..." if len(days) > 10 else "")
+        preview = "\n".join(days[:10]) + ("\n..." if len(days) > 10 else "")
         send_telegram(
             "🚗 Führerscheinstelle München: freie Termine!\n"
-            f"Tage: {preview}\n\n"
+            f"Tage:\n{preview}\n\n"
             f"Sofort buchen: {BOOKING_URL}"
         )
         print(f"Benachrichtigung gesendet. Tage: {days}")

@@ -64,7 +64,8 @@ def fetch_available_days() -> list[str]:
         return [str(d) for d in data]
     if isinstance(data, dict):
         if "availableDays" in data and isinstance(data["availableDays"], list):
-            return [str(d) for d in data["availableDays"]]
+            # Einträge sind Objekte wie {"date": "2026-09-08", "offices": [...]}
+            return [d["date"] if isinstance(d, dict) else str(d) for d in data["availableDays"]]
         if data.get("errors"):
             codes = ", ".join(str(e.get("errorCode")) for e in data["errors"])
             print(f"API: {codes} - keine Termine.")

@@ -17,7 +17,8 @@
    (`check_termin.py`, `.github/workflows/monitor.yml`).
 2. У репозиторії: Settings → Secrets and variables → Actions → додай:
    - `TELEGRAM_BOT_TOKEN` — токен від BotFather
-   - `TELEGRAM_CHAT_ID` — твій chat_id
+   - `TELEGRAM_CHAT_ID` — твій chat_id. Кілька отримувачів: id через кому
+     (кожен має спершу написати боту), або id групи, куди додано бота
 3. Вкладка **Actions** → увімкни workflows → відкрий «Termin Monitor» →
    **Run workflow** для першого тесту.
 

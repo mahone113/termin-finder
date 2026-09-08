@@ -1,7 +1,7 @@
 name: Telegram Test
 
 on:
-  workflow_dispatch:   # nur manuell: prüft, ob Bot-Token und Chat-ID funktionieren
+  workflow_dispatch:   # nur manuell: prüft, ob Bot-Token und Chat-ID(s) funktionieren
 
 jobs:
   send:
@@ -12,7 +12,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          curl -sS --fail-with-body "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=✅ Termin Monitor: Telegram funktioniert." \
-            | sed -E 's/"(id|first_name|last_name|username)":"?[^,}]*"?/"\1":"…"/g'
+          IFS=, ; for id in $TELEGRAM_CHAT_ID; do
+            id=$(echo "$id" | tr -d ' ')
+            curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${id}" \
+              --data-urlencode "text=✅ Termin Monitor: Telegram funktioniert." \
+              | sed -E 's/"(id|first_name|last_name|username|title)":"?[^,}]*"?/"\1":"…"/g'
+            echo
+          done

@@ -8,7 +8,8 @@ Telegram-Nachricht, sobald freie Tage auftauchen.
 
 Benötigte Umgebungsvariablen:
   TELEGRAM_BOT_TOKEN  - Token von @BotFather
-  TELEGRAM_CHAT_ID    - deine Chat-ID (z.B. via @userinfobot)
+  TELEGRAM_CHAT_ID    - Chat-ID(s) (z.B. via @userinfobot), mehrere durch Komma getrennt;
+                        auch eine Gruppen-ID (negativ), wenn der Bot in der Gruppe ist
 """
 
 import hashlib
@@ -86,13 +87,14 @@ def format_day(d) -> str:
 
 def send_telegram(text: str) -> None:
     token = os.environ["TELEGRAM_BOT_TOKEN"]
-    chat_id = os.environ["TELEGRAM_CHAT_ID"]
-    resp = requests.post(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        json={"chat_id": chat_id, "text": text, "disable_web_page_preview": True},
-        timeout=30,
-    )
-    resp.raise_for_status()
+    for chat_id in os.environ["TELEGRAM_CHAT_ID"].split(","):
+        resp = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id.strip(), "text": text, "disable_web_page_preview": True},
+            timeout=30,
+        )
+        if not resp.ok:
+            print(f"Telegram-Fehler für Chat {chat_id.strip()}: {resp.status_code} {resp.text[:200]}")
 
 
 def main() -> int:

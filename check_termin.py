@@ -10,6 +10,10 @@ Benötigte Umgebungsvariablen:
   TELEGRAM_BOT_TOKEN  - Token von @BotFather
   TELEGRAM_CHAT_ID    - Chat-ID(s) (z.B. via @userinfobot), mehrere durch Komma getrennt;
                         auch eine Gruppen-ID (negativ), wenn der Bot in der Gruppe ist
+
+Optional:
+  HEALTHCHECK_URL     - Ping-URL von healthchecks.io; wird nach jedem Check angepingt,
+                        bei API-Fehlern mit /fail
 """
 
 import hashlib
@@ -97,11 +101,22 @@ def send_telegram(text: str) -> None:
             print(f"Telegram-Fehler für Chat {chat_id.strip()}: {resp.status_code} {resp.text[:200]}")
 
 
+def ping_healthcheck(suffix: str = "") -> None:
+    url = os.environ.get("HEALTHCHECK_URL", "").strip()
+    if not url:
+        return
+    try:
+        requests.get(url.rstrip("/") + suffix, timeout=10)
+    except Exception as e:
+        print(f"Healthcheck-Ping fehlgeschlagen: {e}")
+
+
 def main() -> int:
     try:
         days = fetch_available_days()
     except Exception as e:
         print(f"Fehler beim Abruf: {e}")
+        ping_healthcheck("/fail")
         return 0  # Workflow nicht rot färben wegen eines einzelnen Fehlschlags
 
     state = hashlib.sha256(",".join(sorted(days)).encode()).hexdigest()
@@ -121,6 +136,7 @@ def main() -> int:
         print("Keine freien Termine.")
 
     STATE_FILE.write_text(state)
+    ping_healthcheck()
     return 0
 
 
